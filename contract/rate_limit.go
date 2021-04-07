@@ -1,16 +1,15 @@
 package contract
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/juju/ratelimit"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type RateLimit interface {
-	GetBucket(ctx *gin.Context, key string) (*ratelimit.Bucket, bool)
 	AddBuckets(ctx *gin.Context, rules ...LimiterBucketRule) RateLimit
+	GetToken(ctx *gin.Context, key string, count int64) error
 }
-
 
 type LimiterBucketRule struct {
 	Key          string

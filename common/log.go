@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"path"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 const FileSuffix = ".log"
 const LogPath = "./storage/logs"
 
-var entry *logrus.Entry
 var globalLogger *logrus.Logger
 
 const (
@@ -22,14 +22,8 @@ const (
 
 func init() {
 	globalLogger = logrus.New()
-	entry = logrus.NewEntry(globalLogger)
-
+	// 分割文件配置
 	NewSimpleLogger(globalLogger, LogPath, 10)
-}
-
-func SetLogIDField(value string) {
-	entry = logrus.NewEntry(globalLogger)
-	entry = entry.WithField(LogIDKey, value)
 }
 
 func NewSimpleLogger(log *logrus.Logger, logPath string, save uint) {
@@ -50,7 +44,7 @@ func writer(logPath string, level string, save uint) *rotatelogs.RotateLogs {
 	logFullPath := path.Join(logPath, level)
 
 	logier, err := rotatelogs.New(
-		logFullPath+"-%Y%m%d%H%M%S"+FileSuffix,
+		logFullPath+"-%Y%m%d%H"+FileSuffix,
 		rotatelogs.WithLinkName(logFullPath), // 生成软链，指向最新日志文件
 		//rotatelogs.WithRotationCount(save),       // 文件最大保存份数
 		rotatelogs.WithMaxAge(time.Hour*24*7),  // 最大天数 这俩个只能用一个
@@ -63,11 +57,7 @@ func writer(logPath string, level string, save uint) *rotatelogs.RotateLogs {
 	return logier
 }
 
-func Logger() *logrus.Entry {
-	return entry
-}
-
-func GetLoggerWithScope(scope string) *logrus.Entry {
-	newEntry := entry
-	return newEntry.WithField("scope", scope)
+func Logger(ctx context.Context) *logrus.Entry {
+	entry := logrus.NewEntry(globalLogger)
+	return entry.WithField(LogIDKey, ctx.Value(LogIDKey))
 }

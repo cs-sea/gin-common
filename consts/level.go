@@ -1,7 +1,10 @@
 package consts
 
 const (
-	LevelInfo = "info"
+	LevelInfo  = "info"
 	LevelError = "error"
-	LevelWarn = "warn"
+	LevelWarn  = "warn"
+	LevelDebug = "debug"
+	LevelFatal = "fatal"
+	LevelPanic = "panic"
 )

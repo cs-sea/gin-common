@@ -39,8 +39,8 @@ type LoggerRecord struct {
 func LogMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := xid.New().String()
-		common.SetLogIDField(id)
-		common.SetLogID(id)
+		// log_id 放入到context 传递
+		c.Set(common.LogIDKey, id)
 
 		var buf bytes.Buffer
 		tee := io.TeeReader(c.Request.Body, &buf)
@@ -61,7 +61,7 @@ func LogMiddleware() gin.HandlerFunc {
 		loggerRecord.code = blw.Status()
 		loggerRecord.response = blw.body.String()
 
-		logger := common.Logger().WithFields(map[string]interface{}{
+		logger := common.Logger(c).WithFields(map[string]interface{}{
 			"startTime": loggerRecord.startTime,
 			"endTime":   loggerRecord.endTime,
 			"code":      loggerRecord.code,

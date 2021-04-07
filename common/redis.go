@@ -7,3 +7,10 @@ type Redis struct {
 }
 
 var RedisClient Redis
+
+func NewRedis() *Redis {
+
+	redis := redis.NewClient(&redis.Options{})
+
+	return &Redis{redis}
+}
