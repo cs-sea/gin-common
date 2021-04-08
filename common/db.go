@@ -110,7 +110,7 @@ func (g *GormLogger) Info(ctx context.Context, s string, i ...interface{}) {
 		return
 	}
 
-	g.Printf(ctx, s, i)
+	g.Printf(ctx, g.infoStr+s, append([]interface{}{utils.FileWithLineNum()}, i...)...)
 }
 
 func (g *GormLogger) Warn(ctx context.Context, s string, i ...interface{}) {
@@ -118,7 +118,7 @@ func (g *GormLogger) Warn(ctx context.Context, s string, i ...interface{}) {
 		return
 	}
 
-	g.Printf(ctx, s, i)
+	g.Printf(ctx, g.warnStr+s, append([]interface{}{utils.FileWithLineNum()}, i...)...)
 }
 
 func (g *GormLogger) Error(ctx context.Context, s string, i ...interface{}) {
@@ -126,7 +126,7 @@ func (g *GormLogger) Error(ctx context.Context, s string, i ...interface{}) {
 		return
 	}
 
-	g.Printf(ctx, s, i)
+	g.Printf(ctx, g.errStr+s, append([]interface{}{utils.FileWithLineNum()}, i...)...)
 }
 
 func (g *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
@@ -163,9 +163,6 @@ type Writer struct {
 	logger.Writer
 }
 
-func (w *Writer) Printf(ctx context.Context, msg string, data ...interface{}) {
-	Logger(ctx).Println(
-		msg,
-		append([]interface{}{utils.FileWithLineNum()}, data...),
-	)
+func (w *Writer) Printf(ctx context.Context, format string, data ...interface{}) {
+	Logger(ctx).Printf(format, data...)
 }

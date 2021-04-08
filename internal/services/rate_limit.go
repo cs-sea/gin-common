@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const rateLimitPrefix = "rate_limit_prefix:"
+const rateLimitBucket = "rate_limit_bucket"
 
 type bucket struct {
 	fillInterval time.Duration
@@ -33,45 +33,63 @@ func NewRateLimitService(redis *common.Redis) *RateLimitService {
 func (r *RateLimitService) AddBuckets(ctx *gin.Context, rules ...contract.LimiterBucketRule) contract.RateLimit {
 	for _, rule := range rules {
 		r.addBuckets(ctx, rule)
-		rule := rule
-		go func() {
-			r.interval(ctx, rule.Key)
-		}()
+
+		go func(rule contract.LimiterBucketRule) {
+			r.interval(ctx, rule)
+		}(rule)
 	}
 
 	return r
 }
 
 func (r *RateLimitService) addBuckets(ctx *gin.Context, rule contract.LimiterBucketRule) {
-	r.redis.SetNX(ctx, r.buildKey(rule.Key), 0, 0)
+	err := r.redis.WithContext(ctx).ZIncrBy(ctx, rateLimitBucket, 0, rule.Key).Err()
+	if err != nil {
+		common.Logger(ctx).WithError(err)
+	}
 }
 
 func (r *RateLimitService) GetToken(ctx *gin.Context, key string, count int64) error {
-	tokenCount := r.redis.DecrBy(ctx, r.buildKey(key), count).Val()
+	return r.getToken(ctx, key, count)
+}
+
+func (r *RateLimitService) getToken(ctx *gin.Context, key string, count int64) error {
+	tokenCount := r.redis.ZIncrBy(ctx, rateLimitBucket, -float64(count), key).Val()
 	if tokenCount < 0 {
-		r.redis.IncrBy(ctx, r.buildKey(key), count)
+		r.redis.ZIncrBy(ctx, rateLimitBucket, float64(count), key)
 		return errors.New("not valid token")
 	}
 
 	return nil
 }
 
-func (r *RateLimitService) addToken(ctx *gin.Context, key string, count int64) {
-	r.redis.IncrBy(ctx, r.buildKey(key), count)
+func (r *RateLimitService) addToken(ctx *gin.Context, rule contract.LimiterBucketRule) {
+	script := `
+local key = KEYS[1]
+local score = ARGV[1]
+local member = ARGV[2]
+local max = ARGV[3]
+local currentVal = redis.call("zincrby", key, score, member)
+
+if (tonumber(max) < tonumber(currentVal))
+then
+	redis.call("zadd", key, max, member)
+end
+return currentVal;
+`
+	fmt.Printf("%+v\n", rule)
+	err := r.redis.Eval(ctx, script, []string{rateLimitBucket}, rule.Quantum, rule.Key, rule.Capacity).Val()
+	fmt.Println(err)
 }
 
-func (r *RateLimitService) buildKey(key string) string {
-	return rateLimitPrefix + key
-}
-
-func (r *RateLimitService) interval(ctx *gin.Context, key string) {
-	var ticker *time.Ticker = time.NewTicker(time.Second)
+func (r *RateLimitService) interval(ctx *gin.Context, rule contract.LimiterBucketRule) {
+	newDuration := time.Second * time.Duration(rule.FillInterval)
+	var ticker *time.Ticker = time.NewTicker(newDuration)
 
 	for true {
 		select {
 		case <-ticker.C:
-			fmt.Println(11)
-			r.addToken(ctx, key, 10)
+			r.addToken(ctx, rule)
 		}
 	}
 

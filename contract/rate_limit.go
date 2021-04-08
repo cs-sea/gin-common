@@ -1,8 +1,6 @@
 package contract
 
 import (
-	"time"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,7 +11,7 @@ type RateLimit interface {
 
 type LimiterBucketRule struct {
 	Key          string
-	FillInterval time.Duration
+	FillInterval int64 //second
 	Capacity     int64
 	Quantum      int64
 }

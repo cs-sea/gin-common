@@ -2,6 +2,7 @@ package routers
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/cs-sea/gin-common/contract"
 
@@ -20,17 +21,22 @@ func SetTestGroup(r gin.IRouter, middlewares ...gin.HandlerFunc) {
 		db := common.NewDB()
 
 		s := &models.ApiUser{}
-		db.WithContext(c).Debug().Where("sdf = ?", "sd").Find(s)
+		db.WithContext(c).Debug().Where("id = ?", "1").Find(s)
 
 		redis := common.NewRedis()
 
 		rs := services.NewRateLimitService(redis)
 		rs.AddBuckets(c, contract.LimiterBucketRule{
 			Key:          "test",
-			FillInterval: 1,
+			FillInterval: 10,
 			Capacity:     100,
 			Quantum:      10,
 		})
+
+		for true {
+			rs.GetToken(c, "test", 5)
+			time.Sleep(time.Second)
+		}
 
 		fmt.Println("222")
 	})
